@@ -4,7 +4,7 @@
 @inject AdminState Admin
 @inject IJSRuntime JS
 
-<PageTitle>Дипломные работы"</PageTitle>
+<PageTitle>Дипломные работы</PageTitle>
 
 <h1>Дипломные работы студентов специальности "Информационные системы и технологии", ИТ ФАИС ГГТУ</h1>
 
@@ -12,11 +12,11 @@
     <div class="col-sm-6 col-lg-4">
         <label class="form-label mb-0">Поиск</label>
         <input class="form-control" placeholder="студент, тема, руководитель…"
-               @bind="_search" @bind:event="oninput" />
+               @bind="Search" @bind:event="oninput" />
     </div>
     <div class="col-sm-3 col-lg-2">
         <label class="form-label mb-0">Группа</label>
-        <select class="form-select" @bind="_group">
+        <select class="form-select" @bind="Group">
             <option value="">Все</option>
             @foreach (var g in Groups)
             {
@@ -26,7 +26,7 @@
     </div>
     <div class="col-sm-3 col-lg-2">
         <label class="form-label mb-0">Год</label>
-        <select class="form-select" @bind="_year">
+        <select class="form-select" @bind="Year">
             <option value="">Все</option>
             @foreach (var y in Years)
             {
@@ -55,18 +55,18 @@
 }
 else
 {
-    <p class="text-muted">Показано работ: @Filtered.Count() из @Data.Items.Count</p>
+    <p class="text-muted">@StatusText</p>
 
     <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
             <thead>
                 <tr>
                     <th style="width:1%"></th>
-                    <th>Студент</th>
-                    <th>Группа</th>
-                    <th>Тема</th>
-                    <th>Руководитель</th>
-                    <th class="text-center">Год</th>
+                    <th role="button" @onclick='() => SetSort("Student")'>Студент @SortIndicator("Student")</th>
+                    <th role="button" @onclick='() => SetSort("Group")'>Группа @SortIndicator("Group")</th>
+                    <th role="button" @onclick='() => SetSort("Topic")'>Тема @SortIndicator("Topic")</th>
+                    <th role="button" @onclick='() => SetSort("Supervisor")'>Руководитель @SortIndicator("Supervisor")</th>
+                    <th role="button" class="text-center" @onclick='() => SetSort("Year")'>Год @SortIndicator("Year")</th>
                     <th class="text-center">Ссылки</th>
                     @if (Admin.IsAdmin)
                     {
@@ -75,7 +75,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var d in Filtered)
+                @foreach (var d in Paged)
                 {
                     <tr>
                         <td>
@@ -96,17 +96,17 @@ else
                             @if (!string.IsNullOrWhiteSpace(d.RepoUrl))
                             {
                                 <a href="@d.RepoUrl" target="_blank" rel="noopener"
-                                   class="badge bg-secondary text-decoration-none me-1" title="Репозиторий с кодом">Код</a>
+                                   class="badge bg-secondary text-decoration-none me-1" title="Ссылка на исходный код проекта">Исходный код</a>
                             }
                             @if (!string.IsNullOrWhiteSpace(d.InstallUrl))
                             {
                                 <a href="@d.InstallUrl" target="_blank" rel="noopener"
-                                   class="badge bg-secondary text-decoration-none me-1" title="Инсталляционный файл">Файл</a>
+                                   class="badge bg-secondary text-decoration-none me-1" title="Установочный файл">Установочный файл</a>
                             }
                             @if (!string.IsNullOrWhiteSpace(d.DemoUrl))
                             {
                                 <a href="@d.DemoUrl" target="_blank" rel="noopener"
-                                   class="badge bg-secondary text-decoration-none" title="Демо-версия">Демо</a>
+                                   class="badge bg-secondary text-decoration-none" title="Демонстрационная версия">Демонстрация</a>
                             }
                         </td>
                         @if (Admin.IsAdmin)
@@ -143,6 +143,37 @@ else
             </tbody>
         </table>
     </div>
+
+    @if (TotalPages > 1)
+    {
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <nav aria-label="Постраничная навигация">
+                <ul class="pagination mb-0">
+                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(_page - 1)">Назад</button>
+                    </li>
+                    @foreach (var p in PageNumbers)
+                    {
+                        <li class="page-item @(p == _page ? "active" : "")">
+                            <button class="page-link" @onclick="() => GoToPage(p)">@p</button>
+                        </li>
+                    }
+                    <li class="page-item @(_page >= TotalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(_page + 1)">Вперёд</button>
+                    </li>
+                </ul>
+            </nav>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 text-nowrap">Работ на странице</label>
+                <select class="form-select form-select-sm w-auto" @bind="PageSize">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+    }
 }
 
 @if (_editing is not null)
@@ -155,6 +186,18 @@ else
     private string _search = "";
     private string _group = "";
     private string _year = "";
+
+    private int _page = 1;
+    private int _pageSize = 25;
+
+    private string _sortColumn = "Student";
+    private bool _sortAsc = true;
+
+    // Изменение фильтра/поиска возвращает на первую страницу.
+    private string Search { get => _search; set { _search = value; _page = 1; } }
+    private string Group { get => _group; set { _group = value; _page = 1; } }
+    private string Year { get => _year; set { _year = value; _page = 1; } }
+    private int PageSize { get => _pageSize; set { _pageSize = value; _page = 1; } }
 
     private readonly HashSet<string> _expanded = new();
     private string? _pageError;
@@ -213,6 +256,83 @@ else
             return q;
         }
     }
+
+    private IEnumerable<Diploma> Sorted
+    {
+        get
+        {
+            var cmp = StringComparer.CurrentCultureIgnoreCase;
+            return _sortColumn switch
+            {
+                "Group" => Order(d => d.Group, cmp),
+                "Topic" => Order(d => d.Topic, cmp),
+                "Supervisor" => Order(d => d.Supervisor, cmp),
+                // null-год в конец независимо от направления, затем по значению.
+                "Year" => _sortAsc
+                    ? Filtered.OrderBy(d => !d.Year.HasValue).ThenBy(d => d.Year)
+                    : Filtered.OrderBy(d => !d.Year.HasValue).ThenByDescending(d => d.Year),
+                _ => Order(d => d.Student, cmp),
+            };
+        }
+    }
+
+    private IEnumerable<Diploma> Order(Func<Diploma, string> key, IComparer<string> cmp) =>
+        _sortAsc ? Filtered.OrderBy(key, cmp) : Filtered.OrderByDescending(key, cmp);
+
+    private int TotalCount => Filtered.Count();
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)_pageSize));
+
+    private IEnumerable<Diploma> Paged
+    {
+        get
+        {
+            if (_page > TotalPages) _page = TotalPages;
+            if (_page < 1) _page = 1;
+            return Sorted.Skip((_page - 1) * _pageSize).Take(_pageSize);
+        }
+    }
+
+    private string StatusText
+    {
+        get
+        {
+            if (TotalCount == 0) return $"Показано работ: 0 из {Data.Items.Count}";
+            var from = (_page - 1) * _pageSize + 1;
+            var to = Math.Min(_page * _pageSize, TotalCount);
+            return $"Показано работ: {from}–{to} из {TotalCount} (всего {Data.Items.Count})";
+        }
+    }
+
+    private IEnumerable<int> PageNumbers
+    {
+        get
+        {
+            var start = Math.Max(1, _page - 2);
+            var end = Math.Min(TotalPages, _page + 2);
+            for (var p = start; p <= end; p++) yield return p;
+        }
+    }
+
+    private void GoToPage(int p)
+    {
+        if (p < 1 || p > TotalPages) return;
+        _page = p;
+    }
+
+    private void SetSort(string column)
+    {
+        if (_sortColumn == column)
+            _sortAsc = !_sortAsc;
+        else
+        {
+            _sortColumn = column;
+            _sortAsc = true;
+        }
+        _page = 1;
+    }
+
+    private string SortIndicator(string column) =>
+        _sortColumn == column ? (_sortAsc ? "▲" : "▼") : "";
 
     private static bool Contains(string? value, string term) =>
         value is not null && value.Contains(term, StringComparison.CurrentCultureIgnoreCase);

@@ -12,7 +12,7 @@
             @if (Admin.IsAdmin)
             {
                 <span class="me-3 text-success">
-                    ● Админ@(string.IsNullOrEmpty(Admin.Login) ? "" : $": {Admin.Login}")
+                    ● Администратор@(string.IsNullOrEmpty(Admin.Login) ? "" : $": {Admin.Login}")
                 </span>
                 <a href="login">Профиль</a>
             }
@@ -25,6 +25,11 @@
         <article class="content px-4">
             @Body
         </article>
+
+        <footer class="app-footer px-4">
+            © 2026 · Разработано
+            <a href="https://fais.gstu.by/it" target="_blank" rel="noopener">IT FAIS</a>
+        </footer>
     </main>
 </div>
 

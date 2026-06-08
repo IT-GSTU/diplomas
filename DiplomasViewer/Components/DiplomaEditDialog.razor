@@ -46,17 +46,17 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label">URL репозитория</label>
+                            <label class="form-label">Ссылка на исходный код</label>
                             <InputText class="form-control" @bind-Value="Item.RepoUrl" placeholder="https://..." />
                             <ValidationMessage For="@(() => Item.RepoUrl)" />
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">URL инсталляционного файла</label>
+                            <label class="form-label">Ссылка на установочный файл</label>
                             <InputText class="form-control" @bind-Value="Item.InstallUrl" placeholder="https://..." />
                             <ValidationMessage For="@(() => Item.InstallUrl)" />
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">URL демо-версии</label>
+                            <label class="form-label">Ссылка на демонстрацию</label>
                             <InputText class="form-control" @bind-Value="Item.DemoUrl" placeholder="https://..." />
                             <ValidationMessage For="@(() => Item.DemoUrl)" />
                         </div>
