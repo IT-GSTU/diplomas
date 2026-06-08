@@ -1,44 +1,96 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject AdminState Admin
+@inject IJSRuntime JS
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<MudThemeProvider @ref="_themeProvider" Theme="DiplomasViewer.Theme.AppTheme.Gstu" @bind-IsDarkMode="_isDark" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-    <main>
-        <div class="top-row px-4">
-            @if (Admin.IsAdmin)
-            {
-                <span class="me-3 text-success">
-                    ● Администратор@(string.IsNullOrEmpty(Admin.Login) ? "" : $": {Admin.Login}")
-                </span>
-                <a href="login">Профиль</a>
-            }
-            else
-            {
-                <a href="login">Войти как администратор</a>
-            }
-        </div>
+<MudLayout>
+    <MudAppBar Elevation="2">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="ToggleDrawer" aria-label="Меню" />
+        <MudImage Src="favicon.png" Alt="ГГТУ" Height="30" Class="rounded mx-2"
+                  Style="background:#fff;padding:2px;" />
+        <MudText Typo="Typo.h6" Class="d-none d-sm-flex">Дипломные работы</MudText>
+        <MudSpacer />
 
-        <article class="content px-4">
+        @if (Admin.IsAdmin)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Verified" Color="Color.Success" Class="mr-1" />
+            <MudText Typo="Typo.body2" Class="mr-2 d-none d-sm-flex">
+                @($"Администратор{(string.IsNullOrEmpty(Admin.Login) ? "" : $": {Admin.Login}")}")
+            </MudText>
+        }
+
+        <MudTooltip Text="@(_isDark ? "Светлая тема" : "Тёмная тема")">
+            <MudIconButton Icon="@(_isDark ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit" OnClick="ToggleDarkMode" aria-label="Переключить тему" />
+        </MudTooltip>
+
+        <MudButton Href="login" Variant="Variant.Text" Color="Color.Inherit"
+                   StartIcon="@Icons.Material.Filled.Login">
+            @(Admin.IsAdmin ? "Профиль" : "Войти")
+        </MudButton>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive"
+               ClipMode="DrawerClipMode.Always">
+        <MudNavMenu>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.ListAlt">
+                Список работ
+            </MudNavLink>
+            <MudNavLink Href="login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">
+                Вход администратора
+            </MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
             @Body
-        </article>
-
-        <footer class="app-footer px-4">
+        </MudContainer>
+        <footer class="app-footer">
             © 2026 · Разработано
-            <a href="https://fais.gstu.by/it" target="_blank" rel="noopener">IT FAIS</a>
+            <MudLink Href="https://fais.gstu.by/it" Target="_blank" Underline="Underline.Hover">IT FAIS</MudLink>
         </footer>
-    </main>
-</div>
+    </MudMainContent>
+</MudLayout>
 
 @code {
+    private MudThemeProvider _themeProvider = default!;
+    private bool _isDark;
+    private bool _drawerOpen = true;
+
+    private const string ThemeKey = "diplomas.theme.dark";
+
     protected override async Task OnInitializedAsync()
     {
         Admin.OnChange += StateHasChanged;
         await Admin.EnsureInitializedAsync();
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Восстанавливаем выбор темы; если его нет — берём системную настройку.
+        var stored = await JS.InvokeAsync<string?>("localStorage.getItem", ThemeKey);
+        _isDark = stored is "1" or "0"
+            ? stored == "1"
+            : await _themeProvider.GetSystemDarkModeAsync();
+        StateHasChanged();
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        _isDark = !_isDark;
+        await JS.InvokeVoidAsync("localStorage.setItem", ThemeKey, _isDark ? "1" : "0");
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     public void Dispose() => Admin.OnChange -= StateHasChanged;
 }

@@ -3,72 +3,78 @@
 @inject GitHubClient GitHub
 @inject GitHubOptions Options
 @inject NavigationManager Nav
+@inject ISnackbar Snackbar
 
 <PageTitle>Вход администратора</PageTitle>
 
-<h1>Вход администратора</h1>
+<MudText Typo="Typo.h5" GutterBottom="true">Вход администратора</MudText>
 
 @if (Admin.IsAdmin)
 {
-    <div class="alert alert-success">
+    <MudAlert Severity="Severity.Success" Class="mb-4">
         Вы вошли как администратор@(string.IsNullOrEmpty(Admin.Login) ? "" : $" ({Admin.Login})").
         Доступны добавление, редактирование и удаление работ.
-    </div>
-    <button class="btn btn-outline-danger" @onclick="SignOut">Выйти</button>
-    <a class="btn btn-link" href="">К списку работ</a>
+    </MudAlert>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.Logout" OnClick="SignOut">Выйти</MudButton>
+        <MudButton Variant="Variant.Text" Href="">К списку работ</MudButton>
+    </MudStack>
 }
 else
 {
-    <p class="text-muted">
+    <MudText Typo="Typo.body1" Class="mb-4">
         Изменять данные может только пользователь с правом записи в репозиторий
-        <code>@Options.Owner/@Options.Repo</code>. Вставьте персональный токен
+        <strong>@Options.Owner/@Options.Repo</strong>. Вставьте персональный токен
         доступа GitHub (Personal Access Token).
-    </p>
+    </MudText>
 
-    <div class="row">
-        <div class="col-md-8 col-lg-6">
-            <div class="mb-3">
-                <label class="form-label">GitHub-токен</label>
-                <input type="password" class="form-control" @bind="_token" @bind:event="oninput"
-                       placeholder="ghp_… или github_pat_…" autocomplete="off" />
-            </div>
+    <MudPaper Class="pa-4 mb-4" Style="max-width:540px" Outlined="true" Elevation="0">
+        <MudTextField @bind-Value="_token" Label="GitHub-токен" Variant="Variant.Outlined"
+                      InputType="@(_show ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_show ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _show = !_show)" AdornmentAriaLabel="Показать или скрыть токен"
+                      Placeholder="ghp_… или github_pat_…" Immediate="true" Class="mb-3" />
 
-            @if (!string.IsNullOrEmpty(_error))
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+        }
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SignIn"
+                   StartIcon="@Icons.Material.Filled.Login"
+                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_token))">
+            @if (_busy)
             {
-                <div class="alert alert-danger">@_error</div>
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
+            Войти
+        </MudButton>
+    </MudPaper>
 
-            <button class="btn btn-primary" @onclick="SignIn" disabled="@(_busy || string.IsNullOrWhiteSpace(_token))">
-                @if (_busy)
-                {
-                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-                }
-                Войти
-            </button>
-        </div>
-    </div>
-
-    <div class="alert alert-secondary mt-4">
-        <strong>Как получить токен:</strong>
-        <ol class="mb-2">
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-2" Style="max-width:760px">
+        <MudText Typo="Typo.subtitle2" GutterBottom="true">Как получить токен</MudText>
+        <ol class="mud-typography-body2" style="padding-left:1.25rem; margin-bottom:0.5rem;">
             <li>GitHub → Settings → Developer settings → Personal access tokens.</li>
             <li>Fine-grained token: доступ только к репозиторию
-                <code>@Options.Owner/@Options.Repo</code>, право
-                <em>Contents: Read and write</em>. (или classic-токен со scope
-                <code>public_repo</code>).</li>
+                <strong>@Options.Owner/@Options.Repo</strong>, право
+                <em>Contents: Read and write</em> (или classic-токен со scope
+                <strong>public_repo</strong>).</li>
             <li>Скопируйте токен и вставьте в поле выше.</li>
         </ol>
-        <small class="text-muted">
+        <MudText Typo="Typo.caption">
             Токен хранится только в этой вкладке браузера (sessionStorage) и нигде
             не публикуется. Никому его не передавайте.
-        </small>
-    </div>
+        </MudText>
+    </MudAlert>
 }
 
 @code {
     private string _token = "";
     private string? _error;
     private bool _busy;
+    private bool _show;
 
     private async Task SignIn()
     {
@@ -83,6 +89,7 @@ else
                 return;
             }
             await Admin.SignInAsync(_token.Trim(), info.Login);
+            Snackbar.Add($"Вход выполнен{(string.IsNullOrEmpty(info.Login) ? "" : $": {info.Login}")}", Severity.Success);
             Nav.NavigateTo("");
         }
         finally
@@ -94,6 +101,7 @@ else
     private async Task SignOut()
     {
         await Admin.SignOutAsync();
+        Snackbar.Add("Вы вышли из режима администратора", Severity.Normal);
         Nav.NavigateTo("");
     }
 }

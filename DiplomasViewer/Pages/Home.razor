@@ -2,210 +2,165 @@
 @implements IDisposable
 @inject DiplomaService Data
 @inject AdminState Admin
-@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>Дипломные работы</PageTitle>
 
-<h1>Дипломные работы студентов специальности "Информационные системы и технологии", ИТ ФАИС ГГТУ</h1>
-
-<div class="row g-2 align-items-end mb-3">
-    <div class="col-sm-6 col-lg-4">
-        <label class="form-label mb-0">Поиск</label>
-        <input class="form-control" placeholder="студент, тема, руководитель…"
-               @bind="Search" @bind:event="oninput" />
-    </div>
-    <div class="col-sm-3 col-lg-2">
-        <label class="form-label mb-0">Группа</label>
-        <select class="form-select" @bind="Group">
-            <option value="">Все</option>
-            @foreach (var g in Groups)
-            {
-                <option value="@g">@g</option>
-            }
-        </select>
-    </div>
-    <div class="col-sm-3 col-lg-2">
-        <label class="form-label mb-0">Год</label>
-        <select class="form-select" @bind="Year">
-            <option value="">Все</option>
-            @foreach (var y in Years)
-            {
-                <option value="@y">@y</option>
-            }
-        </select>
-    </div>
-    @if (Admin.IsAdmin)
-    {
-        <div class="col-lg-4 text-lg-end">
-            <button class="btn btn-success" @onclick="AddNew">+ Добавить работу</button>
-        </div>
-    }
-</div>
+<MudText Typo="Typo.h5" GutterBottom="true">
+    Дипломные работы студентов специальности «Информационные системы и технологии», ИТ ФАИС ГГТУ
+</MudText>
 
 @if (!string.IsNullOrEmpty(_pageError))
 {
-    <div class="alert alert-danger">@_pageError</div>
+    <MudAlert Severity="Severity.Error" Class="mb-3" Variant="Variant.Filled">@_pageError</MudAlert>
 }
 
-@if (!Data.Loaded)
-{
-    <div class="d-flex align-items-center gap-2 text-muted">
-        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Загрузка…
-    </div>
-}
-else
-{
-    <p class="text-muted">@StatusText</p>
-
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
-            <thead>
-                <tr>
-                    <th style="width:1%"></th>
-                    <th role="button" @onclick='() => SetSort("Student")'>Студент @SortIndicator("Student")</th>
-                    <th role="button" @onclick='() => SetSort("Group")'>Группа @SortIndicator("Group")</th>
-                    <th role="button" @onclick='() => SetSort("Topic")'>Тема @SortIndicator("Topic")</th>
-                    <th role="button" @onclick='() => SetSort("Supervisor")'>Руководитель @SortIndicator("Supervisor")</th>
-                    <th role="button" class="text-center" @onclick='() => SetSort("Year")'>Год @SortIndicator("Year")</th>
-                    <th class="text-center">Ссылки</th>
-                    @if (Admin.IsAdmin)
-                    {
-                        <th class="text-end">Действия</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var d in Paged)
-                {
-                    <tr>
-                        <td>
-                            @if (!string.IsNullOrWhiteSpace(d.Description))
-                            {
-                                <button class="btn btn-sm btn-link p-0 text-decoration-none" title="Описание"
-                                        @onclick="() => ToggleExpand(d.Id)">
-                                    @(IsExpanded(d.Id) ? "▼" : "▶")
-                                </button>
-                            }
-                        </td>
-                        <td>@d.Student</td>
-                        <td>@d.Group</td>
-                        <td>@d.Topic</td>
-                        <td>@d.Supervisor</td>
-                        <td class="text-center">@d.Year</td>
-                        <td class="text-center text-nowrap">
-                            @if (!string.IsNullOrWhiteSpace(d.RepoUrl))
-                            {
-                                <a href="@d.RepoUrl" target="_blank" rel="noopener"
-                                   class="badge bg-secondary text-decoration-none me-1" title="Ссылка на исходный код проекта">Исходный код</a>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(d.InstallUrl))
-                            {
-                                <a href="@d.InstallUrl" target="_blank" rel="noopener"
-                                   class="badge bg-secondary text-decoration-none me-1" title="Установочный файл">Установочный файл</a>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(d.DemoUrl))
-                            {
-                                <a href="@d.DemoUrl" target="_blank" rel="noopener"
-                                   class="badge bg-secondary text-decoration-none" title="Демонстрационная версия">Демонстрация</a>
-                            }
-                        </td>
-                        @if (Admin.IsAdmin)
-                        {
-                            <td class="text-end text-nowrap">
-                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Edit(d)">
-                                    Изменить
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(d)">
-                                    Удалить
-                                </button>
-                            </td>
-                        }
-                    </tr>
-                    @if (IsExpanded(d.Id))
-                    {
-                        <tr class="table-light">
-                            <td></td>
-                            <td colspan="@(Admin.IsAdmin ? 7 : 6)">
-                                <strong>Краткое описание:</strong>
-                                <div style="white-space:pre-wrap">@d.Description</div>
-                            </td>
-                        </tr>
-                    }
-                }
-                @if (!Filtered.Any())
-                {
-                    <tr>
-                        <td colspan="@(Admin.IsAdmin ? 8 : 7)" class="text-center text-muted py-4">
-                            Ничего не найдено.
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    @if (TotalPages > 1)
+<MudGrid Class="mb-3" Spacing="2">
+    <MudItem xs="12" sm="6" md="4">
+        <MudTextField @bind-Value="Search" Immediate="true" Label="Поиск"
+                      Placeholder="студент, тема, руководитель…"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    </MudItem>
+    <MudItem xs="6" sm="3" md="2">
+        <MudSelect @bind-Value="Group" Label="Группа" Clearable="true"
+                   Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="@("")">Все</MudSelectItem>
+            @foreach (var g in Groups)
+            {
+                <MudSelectItem Value="@g">@g</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" sm="3" md="2">
+        <MudSelect @bind-Value="Year" Label="Год" Clearable="true"
+                   Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="@("")">Все</MudSelectItem>
+            @foreach (var y in Years)
+            {
+                <MudSelectItem Value="@y.ToString()">@y</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    @if (Admin.IsAdmin)
     {
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <nav aria-label="Постраничная навигация">
-                <ul class="pagination mb-0">
-                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                        <button class="page-link" @onclick="() => GoToPage(_page - 1)">Назад</button>
-                    </li>
-                    @foreach (var p in PageNumbers)
-                    {
-                        <li class="page-item @(p == _page ? "active" : "")">
-                            <button class="page-link" @onclick="() => GoToPage(p)">@p</button>
-                        </li>
-                    }
-                    <li class="page-item @(_page >= TotalPages ? "disabled" : "")">
-                        <button class="page-link" @onclick="() => GoToPage(_page + 1)">Вперёд</button>
-                    </li>
-                </ul>
-            </nav>
-            <div class="d-flex align-items-center gap-2">
-                <label class="form-label mb-0 text-nowrap">Работ на странице</label>
-                <select class="form-select form-select-sm w-auto" @bind="PageSize">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </div>
-        </div>
+        <MudItem xs="12" md="4" Class="d-flex align-center justify-md-end">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddNew">
+                Добавить работу
+            </MudButton>
+        </MudItem>
     }
-}
+</MudGrid>
 
-@if (_editing is not null)
-{
-    <DiplomaEditDialog Item="_editing" Title="@_editTitle" IsBusy="_editBusy" Error="_editError"
-                       OnSave="SaveEdit" OnCancel="CancelEdit" />
-}
+<MudTable Items="Filtered" Hover="true" Striped="true" Dense="true" Breakpoint="Breakpoint.Sm"
+          Loading="@(!Data.Loaded)" LoadingProgressColor="Color.Primary" Elevation="1">
+    <HeaderContent>
+        <MudTh Style="width:1%"></MudTh>
+        <MudTh>
+            <MudTableSortLabel SortBy="@(new Func<Diploma, object>(x => x.Student))"
+                               InitialDirection="SortDirection.Ascending">Студент</MudTableSortLabel>
+        </MudTh>
+        <MudTh>
+            <MudTableSortLabel SortBy="@(new Func<Diploma, object>(x => x.Group))">Группа</MudTableSortLabel>
+        </MudTh>
+        <MudTh>
+            <MudTableSortLabel SortBy="@(new Func<Diploma, object>(x => x.Topic))">Тема</MudTableSortLabel>
+        </MudTh>
+        <MudTh>
+            <MudTableSortLabel SortBy="@(new Func<Diploma, object>(x => x.Supervisor))">Руководитель</MudTableSortLabel>
+        </MudTh>
+        <MudTh Style="text-align:center">
+            <MudTableSortLabel SortBy="@(new Func<Diploma, object>(x => x.Year ?? 0))">Год</MudTableSortLabel>
+        </MudTh>
+        <MudTh Style="text-align:center">Ссылки</MudTh>
+        @if (Admin.IsAdmin)
+        {
+            <MudTh Style="text-align:right">Действия</MudTh>
+        }
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd Style="width:1%">
+            @if (!string.IsNullOrWhiteSpace(context.Description))
+            {
+                <MudIconButton Size="Size.Small"
+                               Icon="@(IsExpanded(context.Id) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               OnClick="@(() => ToggleExpand(context.Id))" aria-label="Описание" />
+            }
+        </MudTd>
+        <MudTd DataLabel="Студент">@context.Student</MudTd>
+        <MudTd DataLabel="Группа">@context.Group</MudTd>
+        <MudTd DataLabel="Тема">@context.Topic</MudTd>
+        <MudTd DataLabel="Руководитель">@context.Supervisor</MudTd>
+        <MudTd DataLabel="Год" Style="text-align:center">@context.Year</MudTd>
+        <MudTd DataLabel="Ссылки" Style="text-align:center">
+            <div class="d-flex flex-wrap gap-1 justify-center">
+                @if (!string.IsNullOrWhiteSpace(context.RepoUrl))
+                {
+                    <MudChip T="string" Href="@context.RepoUrl" Target="_blank"
+                             Icon="@Icons.Material.Filled.Code" Color="Color.Primary"
+                             Variant="Variant.Text" Size="Size.Small">Исходный код</MudChip>
+                }
+                @if (!string.IsNullOrWhiteSpace(context.InstallUrl))
+                {
+                    <MudChip T="string" Href="@context.InstallUrl" Target="_blank"
+                             Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
+                             Variant="Variant.Text" Size="Size.Small">Установочный файл</MudChip>
+                }
+                @if (!string.IsNullOrWhiteSpace(context.DemoUrl))
+                {
+                    <MudChip T="string" Href="@context.DemoUrl" Target="_blank"
+                             Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary"
+                             Variant="Variant.Text" Size="Size.Small">Демонстрация</MudChip>
+                }
+            </div>
+        </MudTd>
+        @if (Admin.IsAdmin)
+        {
+            <MudTd DataLabel="Действия" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
+                               Size="Size.Small" OnClick="@(() => Edit(context))" aria-label="Изменить" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" OnClick="@(() => Delete(context))" aria-label="Удалить" />
+            </MudTd>
+        }
+    </RowTemplate>
+    <ChildRowContent>
+        @if (IsExpanded(context.Id) && !string.IsNullOrWhiteSpace(context.Description))
+        {
+            <MudTr>
+                <MudTd colspan="@(Admin.IsAdmin ? 8 : 7)" Class="mud-background-gray">
+                    <MudText Typo="Typo.subtitle2">Краткое описание</MudText>
+                    <MudText Typo="Typo.body2" Style="white-space:pre-wrap">@context.Description</MudText>
+                </MudTd>
+            </MudTr>
+        }
+    </ChildRowContent>
+    <NoRecordsContent>
+        <MudText Align="Align.Center" Class="py-4" Color="Color.Default">Ничего не найдено.</MudText>
+    </NoRecordsContent>
+    <LoadingContent>
+        <MudText Align="Align.Center" Class="py-4">Загрузка…</MudText>
+    </LoadingContent>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new[] { 10, 25, 50, 100 }"
+                       RowsPerPageString="Работ на странице"
+                       InfoFormat="{first_item}–{last_item} из {all_items}" />
+    </PagerContent>
+</MudTable>
 
 @code {
     private string _search = "";
     private string _group = "";
     private string _year = "";
 
-    private int _page = 1;
-    private int _pageSize = 25;
-
-    private string _sortColumn = "Student";
-    private bool _sortAsc = true;
-
-    // Изменение фильтра/поиска возвращает на первую страницу.
-    private string Search { get => _search; set { _search = value; _page = 1; } }
-    private string Group { get => _group; set { _group = value; _page = 1; } }
-    private string Year { get => _year; set { _year = value; _page = 1; } }
-    private int PageSize { get => _pageSize; set { _pageSize = value; _page = 1; } }
+    private string Search { get => _search; set => _search = value ?? ""; }
+    private string Group { get => _group; set => _group = value ?? ""; }
+    private string Year { get => _year; set => _year = value ?? ""; }
 
     private readonly HashSet<string> _expanded = new();
     private string? _pageError;
-
-    private Diploma? _editing;
-    private string _editTitle = "";
-    private string? _editError;
-    private bool _editBusy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -257,83 +212,6 @@ else
         }
     }
 
-    private IEnumerable<Diploma> Sorted
-    {
-        get
-        {
-            var cmp = StringComparer.CurrentCultureIgnoreCase;
-            return _sortColumn switch
-            {
-                "Group" => Order(d => d.Group, cmp),
-                "Topic" => Order(d => d.Topic, cmp),
-                "Supervisor" => Order(d => d.Supervisor, cmp),
-                // null-год в конец независимо от направления, затем по значению.
-                "Year" => _sortAsc
-                    ? Filtered.OrderBy(d => !d.Year.HasValue).ThenBy(d => d.Year)
-                    : Filtered.OrderBy(d => !d.Year.HasValue).ThenByDescending(d => d.Year),
-                _ => Order(d => d.Student, cmp),
-            };
-        }
-    }
-
-    private IEnumerable<Diploma> Order(Func<Diploma, string> key, IComparer<string> cmp) =>
-        _sortAsc ? Filtered.OrderBy(key, cmp) : Filtered.OrderByDescending(key, cmp);
-
-    private int TotalCount => Filtered.Count();
-    private int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)_pageSize));
-
-    private IEnumerable<Diploma> Paged
-    {
-        get
-        {
-            if (_page > TotalPages) _page = TotalPages;
-            if (_page < 1) _page = 1;
-            return Sorted.Skip((_page - 1) * _pageSize).Take(_pageSize);
-        }
-    }
-
-    private string StatusText
-    {
-        get
-        {
-            if (TotalCount == 0) return $"Показано работ: 0 из {Data.Items.Count}";
-            var from = (_page - 1) * _pageSize + 1;
-            var to = Math.Min(_page * _pageSize, TotalCount);
-            return $"Показано работ: {from}–{to} из {TotalCount} (всего {Data.Items.Count})";
-        }
-    }
-
-    private IEnumerable<int> PageNumbers
-    {
-        get
-        {
-            var start = Math.Max(1, _page - 2);
-            var end = Math.Min(TotalPages, _page + 2);
-            for (var p = start; p <= end; p++) yield return p;
-        }
-    }
-
-    private void GoToPage(int p)
-    {
-        if (p < 1 || p > TotalPages) return;
-        _page = p;
-    }
-
-    private void SetSort(string column)
-    {
-        if (_sortColumn == column)
-            _sortAsc = !_sortAsc;
-        else
-        {
-            _sortColumn = column;
-            _sortAsc = true;
-        }
-        _page = 1;
-    }
-
-    private string SortIndicator(string column) =>
-        _sortColumn == column ? (_sortAsc ? "▲" : "▼") : "";
-
     private static bool Contains(string? value, string term) =>
         value is not null && value.Contains(term, StringComparison.CurrentCultureIgnoreCase);
 
@@ -344,57 +222,34 @@ else
         if (!_expanded.Add(id)) _expanded.Remove(id);
     }
 
-    private void AddNew()
-    {
-        _editing = new Diploma { Year = Years.FirstOrDefault(DateTime.Now.Year) };
-        _editTitle = "Добавить работу";
-        _editError = null;
-    }
+    private Task AddNew() =>
+        ShowEditDialog(new Diploma { Year = Years.FirstOrDefault(DateTime.Now.Year) }, "Добавить работу");
 
-    private void Edit(Diploma d)
-    {
-        _editing = d.Clone();
-        _editTitle = "Изменить работу";
-        _editError = null;
-    }
+    private Task Edit(Diploma d) => ShowEditDialog(d.Clone(), "Изменить работу");
 
-    private void CancelEdit()
+    private async Task ShowEditDialog(Diploma model, string title)
     {
-        _editing = null;
-        _editError = null;
-    }
-
-    private async Task SaveEdit(Diploma item)
-    {
-        _editBusy = true;
-        _editError = null;
-        try
-        {
-            await Data.SaveAsync(item, Admin.Token!);
-            _editing = null;
-        }
-        catch (Exception ex)
-        {
-            _editError = $"Не удалось сохранить: {ex.Message}";
-        }
-        finally
-        {
-            _editBusy = false;
-        }
+        var parameters = new DialogParameters<DiplomaEditDialog> { { x => x.Item, model } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        await DialogService.ShowAsync<DiplomaEditDialog>(title, parameters, options);
     }
 
     private async Task Delete(Diploma d)
     {
-        var ok = await JS.InvokeAsync<bool>("confirm", $"Удалить работу студента «{d.Student}»?");
-        if (!ok) return;
-        _pageError = null;
+        var ok = await DialogService.ShowMessageBoxAsync(
+            "Удаление работы",
+            $"Удалить работу студента «{d.Student}»?",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (ok != true) return;
+
         try
         {
             await Data.DeleteAsync(d.Id, Admin.Token!);
+            Snackbar.Add("Работа удалена", Severity.Success);
         }
         catch (Exception ex)
         {
-            _pageError = $"Не удалось удалить: {ex.Message}";
+            Snackbar.Add($"Не удалось удалить: {ex.Message}", Severity.Error);
         }
         StateHasChanged();
     }

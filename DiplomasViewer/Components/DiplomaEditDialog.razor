@@ -1,97 +1,104 @@
-@* Модальная форма добавления/редактирования работы. *@
+@* Модальная форма добавления/редактирования работы (MudBlazor-диалог). *@
+@inject DiplomaService Data
+@inject AdminState Admin
+@inject ISnackbar Snackbar
 
-<div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
-        <div class="modal-content">
-            <EditForm Model="Item" OnValidSubmit="HandleSubmit">
-                <DataAnnotationsValidator />
-                <div class="modal-header">
-                    <h5 class="modal-title">@Title</h5>
-                    <button type="button" class="btn-close" aria-label="Закрыть"
-                            @onclick="OnCancel" disabled="@IsBusy"></button>
-                </div>
-                <div class="modal-body">
-                    <ValidationSummary class="text-danger" />
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="Item" OnValidSubmit="HandleSubmit" id="diploma-edit-form">
+            <DataAnnotationsValidator />
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Item.Student" Label="Студент" Required="true"
+                                  For="@(() => Item.Student)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="8" sm="4">
+                    <MudTextField @bind-Value="Item.Group" Label="Группа"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="4" sm="2">
+                    <MudNumericField @bind-Value="Item.Year" Label="Год" For="@(() => Item.Year)"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Студент *</label>
-                            <InputText class="form-control" @bind-Value="Item.Student" />
-                            <ValidationMessage For="@(() => Item.Student)" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Группа</label>
-                            <InputText class="form-control" @bind-Value="Item.Group" />
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Год</label>
-                            <InputNumber class="form-control" @bind-Value="Item.Year" />
-                            <ValidationMessage For="@(() => Item.Year)" />
-                        </div>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Item.Topic" Label="Тема" Required="true" Lines="2"
+                                  For="@(() => Item.Topic)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
 
-                        <div class="col-12">
-                            <label class="form-label">Тема *</label>
-                            <InputTextArea class="form-control" rows="2" @bind-Value="Item.Topic" />
-                            <ValidationMessage For="@(() => Item.Topic)" />
-                        </div>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Item.Supervisor" Label="Руководитель"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
 
-                        <div class="col-12">
-                            <label class="form-label">Руководитель</label>
-                            <InputText class="form-control" @bind-Value="Item.Supervisor" />
-                        </div>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Item.Description" Label="Краткое описание" Lines="4"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
 
-                        <div class="col-12">
-                            <label class="form-label">Краткое описание</label>
-                            <InputTextArea class="form-control" rows="4" @bind-Value="Item.Description" />
-                        </div>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="Item.RepoUrl" Label="Ссылка на исходный код"
+                                  Placeholder="https://..." For="@(() => Item.RepoUrl)"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="Item.InstallUrl" Label="Ссылка на установочный файл"
+                                  Placeholder="https://..." For="@(() => Item.InstallUrl)"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="Item.DemoUrl" Label="Ссылка на демонстрацию"
+                                  Placeholder="https://..." For="@(() => Item.DemoUrl)"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
 
-                        <div class="col-md-4">
-                            <label class="form-label">Ссылка на исходный код</label>
-                            <InputText class="form-control" @bind-Value="Item.RepoUrl" placeholder="https://..." />
-                            <ValidationMessage For="@(() => Item.RepoUrl)" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Ссылка на установочный файл</label>
-                            <InputText class="form-control" @bind-Value="Item.InstallUrl" placeholder="https://..." />
-                            <ValidationMessage For="@(() => Item.InstallUrl)" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Ссылка на демонстрацию</label>
-                            <InputText class="form-control" @bind-Value="Item.DemoUrl" placeholder="https://..." />
-                            <ValidationMessage For="@(() => Item.DemoUrl)" />
-                        </div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(Error))
-                    {
-                        <div class="alert alert-danger mt-3 mb-0">@Error</div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="OnCancel" disabled="@IsBusy">
-                        Отмена
-                    </button>
-                    <button type="submit" class="btn btn-primary" disabled="@IsBusy">
-                        @if (IsBusy)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-                        }
-                        Сохранить
-                    </button>
-                </div>
-            </EditForm>
-        </div>
-    </div>
-</div>
-<div class="modal-backdrop fade show"></div>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3" Variant="Variant.Filled">@_error</MudAlert>
+            }
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_busy">Отмена</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" form="diploma-edit-form"
+                   Color="Color.Primary" Variant="Variant.Filled" Disabled="_busy">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Сохранить
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
-    [Parameter, EditorRequired] public Diploma Item { get; set; } = default!;
-    [Parameter] public string Title { get; set; } = "Работа";
-    [Parameter] public bool IsBusy { get; set; }
-    [Parameter] public string? Error { get; set; }
-    [Parameter] public EventCallback<Diploma> OnSave { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private Task HandleSubmit() => OnSave.InvokeAsync(Item);
+    [Parameter, EditorRequired] public Diploma Item { get; set; } = default!;
+
+    private string? _error;
+    private bool _busy;
+
+    private async Task HandleSubmit()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Data.SaveAsync(Item, Admin.Token!);
+            Snackbar.Add("Работа сохранена", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(Item));
+        }
+        catch (Exception ex)
+        {
+            _error = $"Не удалось сохранить: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
 }
