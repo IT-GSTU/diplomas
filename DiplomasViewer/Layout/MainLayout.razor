@@ -1,0 +1,39 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AdminState Admin
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            @if (Admin.IsAdmin)
+            {
+                <span class="me-3 text-success">
+                    ● Админ@(string.IsNullOrEmpty(Admin.Login) ? "" : $": {Admin.Login}")
+                </span>
+                <a href="login">Профиль</a>
+            }
+            else
+            {
+                <a href="login">Войти как администратор</a>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Admin.OnChange += StateHasChanged;
+        await Admin.EnsureInitializedAsync();
+    }
+
+    public void Dispose() => Admin.OnChange -= StateHasChanged;
+}

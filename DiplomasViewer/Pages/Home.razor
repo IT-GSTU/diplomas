@@ -1,0 +1,287 @@
+@page "/"
+@implements IDisposable
+@inject DiplomaService Data
+@inject AdminState Admin
+@inject IJSRuntime JS
+
+<PageTitle>Дипломные работы</PageTitle>
+
+<h1>Дипломные работы</h1>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-sm-6 col-lg-4">
+        <label class="form-label mb-0">Поиск</label>
+        <input class="form-control" placeholder="студент, тема, руководитель…"
+               @bind="_search" @bind:event="oninput" />
+    </div>
+    <div class="col-sm-3 col-lg-2">
+        <label class="form-label mb-0">Группа</label>
+        <select class="form-select" @bind="_group">
+            <option value="">Все</option>
+            @foreach (var g in Groups)
+            {
+                <option value="@g">@g</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-3 col-lg-2">
+        <label class="form-label mb-0">Год</label>
+        <select class="form-select" @bind="_year">
+            <option value="">Все</option>
+            @foreach (var y in Years)
+            {
+                <option value="@y">@y</option>
+            }
+        </select>
+    </div>
+    @if (Admin.IsAdmin)
+    {
+        <div class="col-lg-4 text-lg-end">
+            <button class="btn btn-success" @onclick="AddNew">+ Добавить работу</button>
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(_pageError))
+{
+    <div class="alert alert-danger">@_pageError</div>
+}
+
+@if (!Data.Loaded)
+{
+    <div class="d-flex align-items-center gap-2 text-muted">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Загрузка…
+    </div>
+}
+else
+{
+    <p class="text-muted">Показано работ: @Filtered.Count() из @Data.Items.Count</p>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width:1%"></th>
+                    <th>Студент</th>
+                    <th>Группа</th>
+                    <th>Тема</th>
+                    <th>Руководитель</th>
+                    <th class="text-center">Год</th>
+                    <th class="text-center">Ссылки</th>
+                    @if (Admin.IsAdmin)
+                    {
+                        <th class="text-end">Действия</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in Filtered)
+                {
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(d.Description))
+                            {
+                                <button class="btn btn-sm btn-link p-0 text-decoration-none" title="Описание"
+                                        @onclick="() => ToggleExpand(d.Id)">
+                                    @(IsExpanded(d.Id) ? "▼" : "▶")
+                                </button>
+                            }
+                        </td>
+                        <td>@d.Student</td>
+                        <td>@d.Group</td>
+                        <td>@d.Topic</td>
+                        <td>@d.Supervisor</td>
+                        <td class="text-center">@d.Year</td>
+                        <td class="text-center text-nowrap">
+                            @if (!string.IsNullOrWhiteSpace(d.RepoUrl))
+                            {
+                                <a href="@d.RepoUrl" target="_blank" rel="noopener"
+                                   class="badge bg-secondary text-decoration-none me-1" title="Репозиторий с кодом">Код</a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(d.InstallUrl))
+                            {
+                                <a href="@d.InstallUrl" target="_blank" rel="noopener"
+                                   class="badge bg-secondary text-decoration-none me-1" title="Инсталляционный файл">Файл</a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(d.DemoUrl))
+                            {
+                                <a href="@d.DemoUrl" target="_blank" rel="noopener"
+                                   class="badge bg-secondary text-decoration-none" title="Демо-версия">Демо</a>
+                            }
+                        </td>
+                        @if (Admin.IsAdmin)
+                        {
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Edit(d)">
+                                    Изменить
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(d)">
+                                    Удалить
+                                </button>
+                            </td>
+                        }
+                    </tr>
+                    @if (IsExpanded(d.Id))
+                    {
+                        <tr class="table-light">
+                            <td></td>
+                            <td colspan="@(Admin.IsAdmin ? 7 : 6)">
+                                <strong>Краткое описание:</strong>
+                                <div style="white-space:pre-wrap">@d.Description</div>
+                            </td>
+                        </tr>
+                    }
+                }
+                @if (!Filtered.Any())
+                {
+                    <tr>
+                        <td colspan="@(Admin.IsAdmin ? 8 : 7)" class="text-center text-muted py-4">
+                            Ничего не найдено.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (_editing is not null)
+{
+    <DiplomaEditDialog Item="_editing" Title="@_editTitle" IsBusy="_editBusy" Error="_editError"
+                       OnSave="SaveEdit" OnCancel="CancelEdit" />
+}
+
+@code {
+    private string _search = "";
+    private string _group = "";
+    private string _year = "";
+
+    private readonly HashSet<string> _expanded = new();
+    private string? _pageError;
+
+    private Diploma? _editing;
+    private string _editTitle = "";
+    private string? _editError;
+    private bool _editBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Data.OnChange += StateHasChanged;
+        Admin.OnChange += ReloadOnAdminChange;
+        await Admin.EnsureInitializedAsync();
+        await Reload();
+    }
+
+    private async void ReloadOnAdminChange() => await Reload();
+
+    private async Task Reload()
+    {
+        _pageError = null;
+        try
+        {
+            await Data.LoadAsync(Admin);
+        }
+        catch (Exception ex)
+        {
+            _pageError = $"Не удалось загрузить данные: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private IEnumerable<string> Groups =>
+        Data.Items.Select(d => d.Group).Where(g => !string.IsNullOrWhiteSpace(g)).Distinct().OrderBy(g => g);
+
+    private IEnumerable<int> Years =>
+        Data.Items.Where(d => d.Year.HasValue).Select(d => d.Year!.Value).Distinct().OrderByDescending(y => y);
+
+    private IEnumerable<Diploma> Filtered
+    {
+        get
+        {
+            var q = Data.Items.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_group))
+                q = q.Where(d => d.Group == _group);
+            if (!string.IsNullOrWhiteSpace(_year) && int.TryParse(_year, out var y))
+                q = q.Where(d => d.Year == y);
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var s = _search.Trim();
+                q = q.Where(d =>
+                    Contains(d.Student, s) || Contains(d.Topic, s) ||
+                    Contains(d.Supervisor, s) || Contains(d.Description, s));
+            }
+            return q;
+        }
+    }
+
+    private static bool Contains(string? value, string term) =>
+        value is not null && value.Contains(term, StringComparison.CurrentCultureIgnoreCase);
+
+    private bool IsExpanded(string id) => _expanded.Contains(id);
+
+    private void ToggleExpand(string id)
+    {
+        if (!_expanded.Add(id)) _expanded.Remove(id);
+    }
+
+    private void AddNew()
+    {
+        _editing = new Diploma { Year = Years.FirstOrDefault(DateTime.Now.Year) };
+        _editTitle = "Добавить работу";
+        _editError = null;
+    }
+
+    private void Edit(Diploma d)
+    {
+        _editing = d.Clone();
+        _editTitle = "Изменить работу";
+        _editError = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editing = null;
+        _editError = null;
+    }
+
+    private async Task SaveEdit(Diploma item)
+    {
+        _editBusy = true;
+        _editError = null;
+        try
+        {
+            await Data.SaveAsync(item, Admin.Token!);
+            _editing = null;
+        }
+        catch (Exception ex)
+        {
+            _editError = $"Не удалось сохранить: {ex.Message}";
+        }
+        finally
+        {
+            _editBusy = false;
+        }
+    }
+
+    private async Task Delete(Diploma d)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm", $"Удалить работу студента «{d.Student}»?");
+        if (!ok) return;
+        _pageError = null;
+        try
+        {
+            await Data.DeleteAsync(d.Id, Admin.Token!);
+        }
+        catch (Exception ex)
+        {
+            _pageError = $"Не удалось удалить: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Data.OnChange -= StateHasChanged;
+        Admin.OnChange -= ReloadOnAdminChange;
+    }
+}

@@ -1,0 +1,97 @@
+@* Модальная форма добавления/редактирования работы. *@
+
+<div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <EditForm Model="Item" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" aria-label="Закрыть"
+                            @onclick="OnCancel" disabled="@IsBusy"></button>
+                </div>
+                <div class="modal-body">
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Студент *</label>
+                            <InputText class="form-control" @bind-Value="Item.Student" />
+                            <ValidationMessage For="@(() => Item.Student)" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Группа</label>
+                            <InputText class="form-control" @bind-Value="Item.Group" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Год</label>
+                            <InputNumber class="form-control" @bind-Value="Item.Year" />
+                            <ValidationMessage For="@(() => Item.Year)" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Тема *</label>
+                            <InputTextArea class="form-control" rows="2" @bind-Value="Item.Topic" />
+                            <ValidationMessage For="@(() => Item.Topic)" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Руководитель</label>
+                            <InputText class="form-control" @bind-Value="Item.Supervisor" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Краткое описание</label>
+                            <InputTextArea class="form-control" rows="4" @bind-Value="Item.Description" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">URL репозитория</label>
+                            <InputText class="form-control" @bind-Value="Item.RepoUrl" placeholder="https://..." />
+                            <ValidationMessage For="@(() => Item.RepoUrl)" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">URL инсталляционного файла</label>
+                            <InputText class="form-control" @bind-Value="Item.InstallUrl" placeholder="https://..." />
+                            <ValidationMessage For="@(() => Item.InstallUrl)" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">URL демо-версии</label>
+                            <InputText class="form-control" @bind-Value="Item.DemoUrl" placeholder="https://..." />
+                            <ValidationMessage For="@(() => Item.DemoUrl)" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Error))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">@Error</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="OnCancel" disabled="@IsBusy">
+                        Отмена
+                    </button>
+                    <button type="submit" class="btn btn-primary" disabled="@IsBusy">
+                        @if (IsBusy)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                        }
+                        Сохранить
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+
+@code {
+    [Parameter, EditorRequired] public Diploma Item { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = "Работа";
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback<Diploma> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private Task HandleSubmit() => OnSave.InvokeAsync(Item);
+}

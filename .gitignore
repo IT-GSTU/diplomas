@@ -1,0 +1,22 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+publish/
+*.user
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Standalone installers that live in this folder but are not part of the app
+*.exe
+
+# OS
+Thumbs.db
+.DS_Store
+
+CLAUDE.md
+
+*.exe
+

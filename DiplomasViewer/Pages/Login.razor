@@ -1,0 +1,99 @@
+@page "/login"
+@inject AdminState Admin
+@inject GitHubClient GitHub
+@inject GitHubOptions Options
+@inject NavigationManager Nav
+
+<PageTitle>Вход администратора</PageTitle>
+
+<h1>Вход администратора</h1>
+
+@if (Admin.IsAdmin)
+{
+    <div class="alert alert-success">
+        Вы вошли как администратор@(string.IsNullOrEmpty(Admin.Login) ? "" : $" ({Admin.Login})").
+        Доступны добавление, редактирование и удаление работ.
+    </div>
+    <button class="btn btn-outline-danger" @onclick="SignOut">Выйти</button>
+    <a class="btn btn-link" href="">К списку работ</a>
+}
+else
+{
+    <p class="text-muted">
+        Изменять данные может только пользователь с правом записи в репозиторий
+        <code>@Options.Owner/@Options.Repo</code>. Вставьте персональный токен
+        доступа GitHub (Personal Access Token).
+    </p>
+
+    <div class="row">
+        <div class="col-md-8 col-lg-6">
+            <div class="mb-3">
+                <label class="form-label">GitHub-токен</label>
+                <input type="password" class="form-control" @bind="_token" @bind:event="oninput"
+                       placeholder="ghp_… или github_pat_…" autocomplete="off" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <button class="btn btn-primary" @onclick="SignIn" disabled="@(_busy || string.IsNullOrWhiteSpace(_token))">
+                @if (_busy)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                }
+                Войти
+            </button>
+        </div>
+    </div>
+
+    <div class="alert alert-secondary mt-4">
+        <strong>Как получить токен:</strong>
+        <ol class="mb-2">
+            <li>GitHub → Settings → Developer settings → Personal access tokens.</li>
+            <li>Fine-grained token: доступ только к репозиторию
+                <code>@Options.Owner/@Options.Repo</code>, право
+                <em>Contents: Read and write</em>. (или classic-токен со scope
+                <code>public_repo</code>).</li>
+            <li>Скопируйте токен и вставьте в поле выше.</li>
+        </ol>
+        <small class="text-muted">
+            Токен хранится только в этой вкладке браузера (sessionStorage) и нигде
+            не публикуется. Никому его не передавайте.
+        </small>
+    </div>
+}
+
+@code {
+    private string _token = "";
+    private string? _error;
+    private bool _busy;
+
+    private async Task SignIn()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var info = await GitHub.ValidateTokenAsync(_token.Trim());
+            if (!info.IsAdmin)
+            {
+                _error = info.Error ?? "Токен не подходит.";
+                return;
+            }
+            await Admin.SignInAsync(_token.Trim(), info.Login);
+            Nav.NavigateTo("");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SignOut()
+    {
+        await Admin.SignOutAsync();
+        Nav.NavigateTo("");
+    }
+}
